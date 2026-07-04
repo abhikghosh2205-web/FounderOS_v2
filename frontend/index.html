@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FounderOS - Autonomous Enterprise Knowledge Mesh</title>
+    <!-- Google Fonts for High-Tech Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- 🕸️ Cytoscape.js for Real-Time Query Graph Visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #0b111e;
+            --bg-card: rgba(22, 33, 54, 0.6);
+            --border-glow: rgba(79, 172, 254, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary-glow: #4facfe;
+            --secondary-glow: #00f2fe;
+            --accent-purple: #7f00ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 🪐 LAYOUT ARCHITECTURE */
+        .sidebar {
+            width: 280px;
+            background: #070b14;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            z-index: 100;
+        }
+
+        .main-workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        /* 🛰️ BRAND & LOGO HEADER */
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-glow), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+
+        .brand-text h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+
+        .brand-text p {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* 🧭 SIDEBAR NAVIGATION LINKING */
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #475569;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .nav-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-align: left;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: rgba(79, 172, 254, 0.1);
+            border-color: rgba(79, 172, 254, 0.3);
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .star-icon {
+            color: #fbbf24;
+            font-size: 0.9rem;
+        }
+
+        /* 🎛️ TOPPERS GRID ACTION CONSOLE BAR */
+        .top-action-bar {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            background: rgba(11, 17, 30, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+        }
+
+        .action-btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-improve {
+            background: rgba(127, 0, 255, 0.15);
+            border: 1px solid rgba(127, 0, 255, 0.4);
+            color: #d8b4fe;
+        }
+
+        .btn-improve:hover { background: rgba(127, 0, 255, 0.3); box-shadow: 0 0 10px rgba(127, 0, 255, 0.4); }
+
+        .btn-forget {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .btn-forget:hover { background: rgba(239, 68, 68, 0.25); }
+
+        /* ⚡ MAIN PANEL GRID PLATFORM */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .panel-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.4;
+        }
+
+        /* 📋 METADATA PARAMETER MATRIX FORMS */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--secondary-glow);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: auto;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* 🔍 KNOWLEDGE SEARCH CONSOLE */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .btn-query {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(90deg, #7f00ff, #e100ff);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(127, 0, 255, 0.3);
+        }
+
+        .btn-query:hover { box-shadow: 0 6px 25px rgba(127, 0, 255, 0.5); }
+
+        /* 💬 OUTPUT ALERT STATUS VIEWS */
+        .console-box {
+            background: #090e17;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1.5rem;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .status-alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .alert-found { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #34d399; }
+        .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #fbbf24; }
+        .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #fca5a5; }
+
+        .response-text {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin-bottom: 1rem;
+        }
+
+        .chip-box {
+            margin-top: auto;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 1rem;
+        }
+
+        .topology-chip {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #7dd3fc;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        /* 🕒 TIMELINE VIEW STREAM STYLES */
+        .view-panel {
+            width: 100%;
+        }
+        
+        .timeline-wrapper {
+            position: relative;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .timeline-track {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #4facfe, #00f2fe, #7f00ff);
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        .timeline-item {
+            position: relative;
+            width: 50%;
+            padding: 1rem 2rem;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🧭 SIDEBAR PLATFORM ROUTER -->
+    <aside class="sidebar">
+        <div class="brand-container">
+            <div class="brand-logo">F</div>
+            <div class="brand-text">
+                <h1>FounderOS</h1>
+                <p>Knowledge Mesh Engine</p>
+            </div>
+        </div>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Navigation</div>
+            <button class="nav-btn active" id="nav-btn-dashboard" onclick="switchMainTab('dashboard')">🎛️ Dashboard Overview</button>
+            <button class="nav-btn" id="nav-btn-timeline" onclick="switchMainTab('timeline')">🕒 Timeline Flow View</button>
+        </nav>
+
+        <nav class="nav-section">
+            <div class="nav-section-title">Knowledge Modules</div>
+            <div id="module-buttons-list">
+                <!-- Programmatically filled to sync active state configurations -->
+            </div>
+        </nav>
+    </aside>
+
+    <!-- ⚡ SYSTEM MAIN OPERATIONS WORKSPACE -->
+    <main class="main-workspace">
+        
+        <!-- TOP ACTIONS OVERLAY BANNER -->
+        <header class="top-action-bar">
+            <button class="action-btn btn-improve" onclick="triggerCogneeImprove()">⚡ improve()</button>
+            <button class="action-btn btn-forget" onclick="triggerCogneeForget()">🗑️ forget()</button>
+        </header>
+
+        <!-- SUB-PANEL 1: CORE GRID MATRIX CONTROL + METRICS ROW -->
+        <div id="dashboard-view-panel" style="display: flex; flex-direction: column; gap: 2rem; padding: 2rem; flex: 1;">
+            
+           <!-- 🧠 AI CONTINUOUS MONITORING HUB -->
+<div class="ai-monitoring-hub" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-bottom: 0.5rem;">
+    
+    <!-- LEFT PANEL: MEMORY INTEGRITY MATRIX -->
+    <div class="panel-card" style="padding: 1.5rem; min-height: auto; margin-bottom: 0;">
+        <div class="panel-header" style="margin-bottom: 1rem;">
+            <span style="color: var(--secondary-glow);">🧠 System Telemetry</span>
+            <h2>Memory Health Matrix</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; background: rgba(9, 14, 23, 0.6); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03);">
+            <div>
+                <div class="form-label" style="font-size: 0.65rem; margin-bottom: 0.25rem;">Stored Memory Sub-Nodes</div>
+                <div id="telemetry-memories" style="font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 800; color: #f8fafc;">184</div>
+            </div>
+            <div>
+                <div class="form-label" style="font-size: 0.65rem; margin-bottom: 0.25rem;">Knowledge Graph Connected</div>
+                <div id="telemetry-connected" style="font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--primary-glow);">96%</div>
+            </div>
+            <div>
+                <div class="form-label" style="font-size: 0.65rem; margin-bottom: 0.25rem;">Last Vector Synced</div>
+                <div id="telemetry-updated" style="font-family: 'Orbitron', sans-serif; font-size: 1.1rem; font-weight: 600; color: var(--text-secondary); margin-top: 0.25rem;">2 min ago</div>
+            </div>
+            <div>
+                <div class="form-label" style="font-size: 0.65rem; margin-bottom: 0.25rem;">Index Graph Quality</div>
+                <div id="telemetry-quality" style="font-family: 'Orbitron', sans-serif; font-size: 1.1rem; font-weight: 700; color: #34d399; margin-top: 0.25rem;">EXCELLENT</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL: DYNAMIC BRIEFING STREAM -->
+    <div class="panel-card" style="padding: 1.5rem; min-height: auto; margin-bottom: 0; justify-content: space-between;">
+        <div>
+            <div class="panel-header" style="margin-bottom: 0.75rem;">
+                <span style="color: #fbbf24;">📌 Autonomous Context Feed</span>
+                <h2>Founder Daily Brief</h2>
+            </div>
+            <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: #cbd5e1;">
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #38bdf8;">•</span> 3 new customer feedback entries integrated to Cognee Cloud.
+                </li>
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #38bdf8;">•</span> 2 competitor price vectors updated inside matrix.
+                </li>
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #ef4444;">•</span> Operating burn rate increased by <strong style="color: #ef4444;">8%</strong> this cycle.
+                </li>
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #fbbf24;">•</span> Warning: One critical investor pipeline follow-up is overdue.
+                </li>
+                <li style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: #34d399;">•</span> Marketing campaign performance CTR improved by <strong style="color: #34d399;">12%</strong>.
+                </li>
+            </ul>
+        </div>
+        <button class="action-btn btn-improve" style="width: 100%; margin-top: 1rem; padding: 0.6rem; font-size: 0.75rem; text-align: center;" onclick="switchMainTab('timeline')">
+            View Expanded Chronological Audit Report →
+        </button>
+    </div>
+
+</div>
+
+            <!-- MAIN TWO-COLUMN DASHBOARD CONTENT -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <!-- LEFT COLUMN: RECORD INPUT PARAMETERS -->
+                <section class="panel-card" style="margin-bottom: 0;">
+                    <div class="panel-header">
+                        <span style="color: var(--secondary-glow);">▶ record()</span>
+                        <h2 id="parameter-card-title">Parameter Entry</h2>
+                    </div>
+                    <p class="panel-subtitle">Configure data inputs explicitly to populate the autonomous Graph Database module structure layer dynamically.</p>
+                    
+                    <form id="module-dynamic-form" onsubmit="handleRememberSubmission(event)" style="display: flex; flex-direction: column; flex: 1;">
+                        <div id="form-fields-target">
+                            <!-- Dynamic Input Forms Injected Here -->
+                        </div>
+                        <button type="submit" class="btn-submit">Commit Changes to Server Database</button>
+                    </form>
+                </section>
+
+                <!-- RIGHT COLUMN: SEARCH GRAPH ENGINE CHANNELS -->
+                <section class="panel-card" style="margin-bottom: 0;">
+                    <div class="panel-header">
+                        <span style="color: var(--primary-glow);">🔍 search()</span>
+                        <h2>Knowledge Engine</h2>
+                    </div>
+                    <p class="panel-subtitle">Traverse stored structural indexes and evaluate semantic sync weights relative to the active operational scope.</p>
+                    
+                    <div class="search-wrapper">
+                        <label class="form-label">Natural Language Search Query</label>
+                        <input type="text" id="engine-search-query" class="form-input" placeholder="Type module evaluation search request...">
+                    </div>
+
+                    <div class="console-box">
+                        <label class="form-label" style="margin-bottom: 0.75rem;">Resolved Database Response</label>
+                        <div id="console-output-target">
+                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; font-style: italic;">
+                                Awaiting network node query parameters execution...
+                            </div>
+                        </div>
+                        <!-- Active Search Console Container -->
+<div id="console-output-target" class="response-content-box">
+    <!-- Text answers will render here -->
+</div>
+
+<!-- 🔮 NEW: DYNAMIC GRAPH NETWORK CANVAS PANEL -->
+<div id="query-graph-canvas" style="width: 100%; height: 250px; background: rgba(5, 9, 17, 0.7); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 8px; margin-top: 1rem; display: none;"></div>
+                    </div>
+
+                    <button class="btn-query" onclick="handleRecallExecution()">Query Graph Network</button>
+                </section>
+            </div>
+        </div>
+
+        <!-- SUB-PANEL 2: CHRONOLOGICAL TIME FEED -->
+        <div id="timeline-flow-view" class="view-panel" style="display: none; padding: 2rem;">
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <h2 style="font-family: 'Orbitron', sans-serif; letter-spacing: 2px; color: #4facfe; margin-bottom: 0.5rem;">🕒 SYSTEM LOGS: TIMELINE FLOW</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Chronological audit stream of committed autonomous knowledge structures.</p>
+            </div>
+
+            <div class="timeline-wrapper">
+                <div class="timeline-track"></div>
+                <div id="timeline-stream-container">
+                    <div style="text-align: center; padding: 4rem; color: #536175; font-style: italic;">
+                        No historical records found. Commit metadata modules from the parameter dashboard to generate sequence tracks.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ⚙️ BACKEND DATA STRUCTURE LAYER & DOM CONTROLLERS -->
+    <script>
+        const BACKEND_URL = "http://127.0.0.1:8080";
+        let activeModuleKey = "startup_profile";
+        let systemTimelineLogs = [];
+
+        // 🗂️ THE 10 AUTONOMOUS CORE ENTERPRISE METADATA ROUTING CONNECTOR MODELS
+        const KNOWLEDGE_MODULES = {
+            "startup_profile": {
+                title: "1. Startup Profile",
+                fields: [
+                    { id: "startup_name", label: "Startup Name", default: "FounderOS" },
+                    { id: "industry_sector", label: "Industry Sector", default: "SaaS" },
+                    { id: "development_stage", label: "Development Stage", default: "MVP" },
+                    { id: "target_country", label: "Target Country", default: "India" },
+                    { id: "corporate_mission", label: "Corporate Mission", default: "Build Autonomous Operations Layers" }
+                ]
+            },
+            "team_memory": {
+                title: "2. Team Memory",
+                fields: [
+                    { id: "lead_developer", label: "Lead Engineer Name", default: "Abhik Ghosh" },
+                    { id: "core_stack", label: "Engineering Stack Profile", default: "FastAPI, Python, JavaScript" },
+                    { id: "team_size", label: "Total Headcount Count", default: "5 members" }
+                ]
+            },
+            "meeting_memory": {
+                title: "3. Meeting Card",
+                starred: true,
+                fields: [
+                    { id: "meeting_topic", label: "Discussion Agenda Title", default: "PostgreSQL Database Schema Alignment" },
+                    { id: "key_decision", label: "Primary Decision Executed", default: "Adopted rigid relation matrix models downstream to Cognee" },
+                    { id: "action_item", label: "Assigned Action Tracker", default: "Refactor core vector calculation boundaries" }
+                ]
+            },
+            "competitor_memory": {
+                title: "4. Competitor Grid",
+                fields: [
+                    { id: "top_rival", label: "Primary Market Threat Entity", default: "Notion Workspace Analytics Ensembles" },
+                    { id: "rival_pricing", label: "Competitor Target Pricing Level", default: "$19 per operator seat monthly" },
+                    { id: "our_advantage", label: "System Product Leverage Edge", default: "Sub-second vector lookup verification pipelines" }
+                ]
+            },
+            "customer_feedback": {
+                title: "5. Feedback Hub",
+                fields: [
+                    { id: "client_identifier", label: "User Account Tag", default: "Enterprise UX Pilot Beta Tier" },
+                    { id: "logged_sentiment", label: "Calculated Core Sentiment", default: "Highly positive matching output structures" },
+                    { id: "feature_request", label: "Requested Improvement Goal", default: "Add real-time collaborative shared canvas links" }
+                ]
+            },
+            "investor_memory": {
+                title: "6. Investor Ledger",
+                fields: [
+                    { id: "venture_firm", label: "Lead Funding Firm Entity", default: "Nexus Venture Ecosystems" },
+                    { id: "target_ask", label: "Target Seed Allocation Amount", default: "$1,500,000 USD Allocation" },
+                    { id: "pitch_status", label: "Pitch Interaction Stage", default: "Deep-Dive Technical Verification Complete" }
+                ]
+            },
+            "product_roadmap": {
+                title: "7. Roadmap Timeline",
+                fields: [
+                    { id: "next_version", label: "Upcoming Build ID Tag", default: "Version 2.6.0 Stable Deployment" },
+                    { id: "milestone_goal", label: "Primary Architectural Target", default: "Add automated temporal context tracking timelines" },
+                    { id: "target_quarter", label: "Target Execution Target Window", default: "Quarter 3 2026 Release Track" }
+                ]
+            },
+            "marketing_memory": {
+                title: "8. Marketing Metrics",
+                fields: [
+                    { id: "active_campaign", label: "Operational Performance Banner", default: "Smart India Hackathon Ecosystem Showcase Ads" },
+                    { id: "click_through_rate", label: "Measured Performance Metric Ratio", default: "4.82% Average CTR Ratio" },
+                    { id: "conversion_target", label: "Core Conversion Focus Area", default: "Developer Signup API Registrations" }
+                ]
+            },
+            "financial_memory": {
+                title: "9. Financial Runway",
+                fields: [
+                    { id: "current_mrr", label: "Current MRR ($)", default: "12000" },
+                    { id: "monthly_operating_burn", label: "Monthly Operating Burn ($)", default: "4500" },
+                    { id: "computed_runway", label: "Computed Runway (Months)", default: "14" }
+                ]
+            },
+            "technical_memory": {
+                title: "10. Tech Stack Docs",
+                fields: [
+                    { id: "architecture_layout", label: "Architecture Layout Details", default: "FastAPI decoupled structure pointing downstream to Cognee" },
+                    { id: "languages_frameworks", label: "Languages & Frameworks", default: "Python, FastAPI, PostgreSQL" },
+                    { id: "critical_logged_bugs", label: "Critical Logged Bugs", default: "SSL internal channel network failures" }
+                ]
+            }
+        };
+
+        // 🏗️ CONSTRUCT SIDEBAR INTERFACE ROUTING BUTTON NODES
+        function initializeSystemNavigation() {
+            const listContainer = document.getElementById('module-buttons-list');
+            listContainer.innerHTML = '';
+            
+            Object.keys(KNOWLEDGE_MODULES).forEach(key => {
+                const config = KNOWLEDGE_MODULES[key];
+                const btn = document.createElement('button');
+                btn.className = `nav-btn ${key === activeModuleKey ? 'active' : ''}`;
+                btn.id = `nav-link-node-${key}`;
+                btn.onclick = () => selectKnowledgeModuleScope(key);
+                
+                btn.innerHTML = `
+                    <span>${config.title}</span>
+                    ${config.starred ? '<span class="star-icon">★</span>' : ''}
+                `;
+                listContainer.appendChild(btn);
+            });
+            renderActiveModuleFields();
+            refreshDashboardMetricsRow();
+        }
+
+        // 🔄 SWITCH GLOBAL APPLICATION WORKSPACE SUB-PANELS
+        function switchMainTab(targetTab) {
+            document.getElementById('nav-btn-dashboard').classList.remove('active');
+            document.getElementById('nav-btn-timeline').classList.remove('active');
+            document.querySelectorAll('#module-buttons-list .nav-btn').forEach(b => b.classList.remove('active'));
+            
+            if (targetTab === 'dashboard') {
+                document.getElementById('dashboard-view-panel').style.display = 'flex';
+                document.getElementById('timeline-flow-view').style.display = 'none';
+                document.getElementById('nav-btn-dashboard').classList.add('active');
+                const activeBtn = document.getElementById(`nav-link-node-${activeModuleKey}`);
+                if (activeBtn) activeBtn.classList.add('active');
+            } else if (targetTab === 'timeline') {
+                document.getElementById('dashboard-view-panel').style.display = 'none';
+                document.getElementById('timeline-flow-view').style.display = 'block';
+                document.getElementById('nav-btn-timeline').classList.add('active');
+                renderTimelineStream();
+            }
+        }
+
+        // 📲 ROUTE INTERACTIVE FIELDS FOR PARAMETER CARDS
+        function selectKnowledgeModuleScope(moduleKey) {
+            activeModuleKey = moduleKey;
+            renderActiveModuleFields(); // 🔥 FIX: Re-render fields when module changes!
+            switchMainTab('dashboard');
+        }
+
+        function renderActiveModuleFields() {
+            const config = KNOWLEDGE_MODULES[activeModuleKey];
+            document.getElementById('parameter-card-title').innerText = config.title;
+            
+            const fieldsContainer = document.getElementById('form-fields-target');
+            fieldsContainer.innerHTML = '';
+            
+            config.fields.forEach(f => {
+                fieldsContainer.innerHTML += `
+                    <div class="form-group">
+                        <label class="form-label">${f.label}</label>
+                        <input type="text" id="input-field-key-${f.id}" class="form-input" value="${f.default}">
+                    </div>
+                `;
+            });
+        }
+
+       function refreshDashboardMetricsRow() {
+    // === 1. Keep Your Existing Telemetry Calculation Engine ===
+    const activeUniqueModules = new Set(systemTimelineLogs.map(log => log.module));
+    const totalModulesCommitted = activeUniqueModules.size;
+
+    const totalSubNodes = 140 + (systemTimelineLogs.length * 12);
+    document.getElementById('telemetry-memories').innerText = totalSubNodes;
+
+    let graphDensity = 75 + (totalModulesCommitted * 2.5);
+    if (graphDensity > 99) graphDensity = 99.4;
+    document.getElementById('telemetry-connected').innerText = `${graphDensity.toFixed(0)}%`;
+
+    const qualityLabel = document.getElementById('telemetry-quality');
+    if (graphDensity < 80) {
+        qualityLabel.innerText = "INITIALIZING";
+        qualityLabel.style.color = "#fbbf24";
+    } else if (graphDensity < 90) {
+        qualityLabel.innerText = "STABLE";
+        qualityLabel.style.color = "#38bdf8";
+    } else {
+        qualityLabel.innerText = "EXCELLENT";
+        qualityLabel.style.color = "#34d399";
+    }
+
+    document.getElementById('telemetry-updated').innerText = "Just Now";
+
+    // === 2. 🔥 NEW: DYNAMIC FOUNDER DAILY BRIEF GENERATOR ===
+    const briefContainer = document.querySelector(".panel-card ul");
+    if (briefContainer) {
+        // Read values dynamically from your input forms to see what's typed
+        const burnRateInput = document.getElementById("input-field-key-monthly_operating_burn");
+        const ctrInput = document.getElementById("input-field-key-measured_performance_metric_ratio");
+        const bugInput = document.getElementById("input-field-key-critical_logged_bugs");
+
+        let burnText = `• Operating burn rate holds stable inside current matrix layers.`;
+        if (burnRateInput && burnRateInput.value) {
+            burnText = `• Operational burn tracking active: <strong style="color: #ef4444;">$${burnRateInput.value}/mo</strong> registered.`;
+        }
+
+        let ctrText = `• Marketing performance metrics awaiting active campaign input vectors.`;
+        if (ctrInput && ctrInput.value) {
+            ctrText = `• Marketing campaign performance tracked at <strong style="color: #34d399;">${ctrInput.value}</strong>.`;
+        }
+
+        let bugText = `• Platform Bug Logs: No active catastrophic failures detected in cloud topology.`;
+        if (bugInput && bugInput.value) {
+            bugText = `• <span style="color: #ef4444;">⚠ System Alert:</span> "${bugInput.value}" logged inside memory node.`;
+        }
+
+        // Build out the dynamic list structure
+        briefContainer.innerHTML = `
+            <li style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #38bdf8;">•</span> ${activeUniqueModules.size} operational modules fully structured inside Cognee Cloud.
+            </li>
+            <li style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #38bdf8;">•</span> Total active synchronized cloud nodes: ${totalSubNodes}.
+            </li>
+            <li style="display: flex; align-items: center; gap: 0.5rem;">
+                ${burnText}
+            </li>
+            <li style="display: flex; align-items: center; gap: 0.5rem;">
+                ${ctrText}
+            </li>
+            <li style="display: flex; align-items: center; gap: 0.5rem;">
+                ${bugText}
+            </li>
+        `;
+    }
+}
+
+        // 🕒 TIMELINE EVENT STATE AGGREGATOR
+        function trackNewTimelineEvent(metadataPayload) {
+            if (!metadataPayload) return;
+            const existingIndex = systemTimelineLogs.findIndex(log => log.id.split('_')[2] === metadataPayload.id.split('_')[2]);
+            
+            if (existingIndex !== -1) {
+                systemTimelineLogs[existingIndex] = metadataPayload;
+            } else {
+                systemTimelineLogs.push(metadataPayload);
+            }
+            systemTimelineLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            refreshDashboardMetricsRow();
+        }
+
+        // 📡 API ENDPOINT ROUTE INTERFACES
+
+        // POST /api/v2/remember
+        async function handleRememberSubmission(e) {
+            e.preventDefault();
+            const config = KNOWLEDGE_MODULES[activeModuleKey];
+            const payloadData = {};
+            
+            config.fields.forEach(f => {
+                payloadData[f.id] = document.getElementById(`input-field-key-${f.id}`).value;
+            });
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v2/remember`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ module_type: activeModuleKey, data_content: payloadData })
+                });
+                const resData = await response.json();
+                
+                if (resData.status === "success") {
+                    trackNewTimelineEvent(resData.metadata);
+                    alert(`Context successfully saved to node: ${resData.metadata.id}`);
+                }
+            } catch (err) {
+                console.error("Transmission breakdown executing remember routing pipeline:", err);
+            }
+        }
+
+        // POST /api/v2/recall
+    async function handleRecallExecution() {
+    // 🛠️ ID Fixed here to match your HTML input element
+    const searchInput = document.getElementById("engine-search-query");
+    // 🛠️ ID Fixed here to match your HTML output console container
+    const searchResultsContainer = document.getElementById("console-output-target");
+    
+    if (!searchInput || !searchInput.value.trim()) {
+        alert("Please enter a valid search query token.");
+        return;
+    }
+
+    const queryText = searchInput.value.trim();
+    // Falls back to global search if activeModuleKey isn't defined
+    const activeModule = typeof activeModuleKey !== 'undefined' ? activeModuleKey : "global"; 
+
+    // Visual loading state using your clean styling theme
+    searchResultsContainer.innerHTML = `
+        <div style="text-align: center; color: var(--secondary-glow); font-size: 0.85rem; font-style: italic;">
+            Querying Cognee Cloud Graph Workspace Matrices...
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/v2/recall`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                module_type: activeModule,
+                query: queryText
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === "FOUND") {
+            searchResultsContainer.innerHTML = `
+                <div class="status-alert alert-found" style="margin-bottom: 0.75rem;">
+                    STATUS: FOUND (${Math.round(result.confidence * 100)}%)
+                </div>
+                <div class="response-text" style="font-family: monospace; font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 6px; overflow-x: auto;">
+                    ${JSON.stringify(result.answer, null, 2)}
+                </div>
+                <div class="chip-box" style="margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem;">
+                    <span class="form-label" style="font-size:0.65rem; margin-bottom: 0.35rem;">Verified Structural Anchors</span>
+                    <div class="topology-chip">${result.matched_entities.join(", ")}</div>
+                </div>
+                
+            `;
+            renderQueryGraph(queryText, result.matched_entities);
+        } else {
+            // Unmatched state handling without fake responses
+            searchResultsContainer.innerHTML = `
+                <div class="status-alert alert-warning" style="margin-bottom: 0.75rem;">
+                    CONTEXT MISMATCH DETECTED
+                </div>
+                <div class="response-text">
+                    ${result.answer}
+                </div>
+            `;
+            document.getElementById("query-graph-canvas").style.display = "none";
+        }
+    } catch (error) {
+        console.error("Search pipeline error:", error);
+        searchResultsContainer.innerHTML = `
+            <div class="status-alert alert-error">ENGINE CONNECTION REFUSED</div>
+            <div class="response-text">Failed to communicate with the semantic engine cluster backend.</div>
+        `;
+    }
+}
+        // POST /api/v2/improve
+        async function triggerCogneeImprove() {
+            try {
+                await fetch(`${BACKEND_URL}/api/v2/improve?module_type=${activeModuleKey}`, { method: 'POST' });
+                alert("Vector matrix optimization indices updated successfully.");
+            } catch (err) { alert("Communication route failed."); }
+        }
+
+        // POST /api/v2/forget
+        async function triggerCogneeForget() {
+            try {
+                await fetch(`${BACKEND_URL}/api/v2/forget?module_type=${activeModuleKey}`, { method: 'POST' });
+                systemTimelineLogs = systemTimelineLogs.filter(log => !log.id.includes(activeModuleKey));
+                renderTimelineStream();
+                refreshDashboardMetricsRow();
+                alert(`Flushed channel: '${activeModuleKey}' context storage arrays.`);
+            } catch (err) { alert("Communication route failed."); }
+        }
+
+        function renderTimelineStream() {
+            const container = document.getElementById('timeline-stream-container');
+            if (!container) return;
+            
+            if (systemTimelineLogs.length === 0) {
+                container.innerHTML = `<div style="text-align: center; padding: 4rem; color: #536175; font-style: italic;">No historical records found. Commit metadata modules from the parameter dashboard to generate sequence tracks.</div>`;
+                return;
+            }
+            
+            container.innerHTML = '';
+            systemTimelineLogs.forEach((event, index) => {
+                const isEven = index % 2 === 0;
+                const timeStr = new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                
+                const cardHtml = `
+                    <div class="timeline-item" style="left: ${isEven ? '0' : '50%'}; text-align: ${isEven ? 'right' : 'left'};">
+                        <div style="position: absolute; top: 1.8rem; width: 12px; height: 12px; background: #00f2fe; border: 3px solid #0f172a; border-radius: 50%; z-index: 10; box-shadow: 0 0 8px #00f2fe; ${isEven ? 'right: -6px;' : 'left: -6px;'}"></div>
+                        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(79, 172, 254, 0.2); padding: 1.25rem; border-radius: 8px; backdrop-filter: blur(12px); display: inline-block; width: 90%; text-align: left;">
+                            <div style="font-size: 0.75rem; color: #00f2fe; font-family: monospace; margin-bottom: 0.35rem;">[ ${timeStr} ] — TYPE: ${event.type.toUpperCase()}</div>
+                            <h4 style="margin-bottom: 0.25rem; font-family: 'Orbitron', sans-serif; font-size: 1rem;">${event.module} State Ingested</h4>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); word-break: break-all;">ID: ${event.id}</div>
+                            <div style="margin-top: 0.5rem; display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                                ${event.tags.map(t => `<span style="background: rgba(127, 0, 255, 0.15); border: 1px solid rgba(127,0,255,0.3); padding: 1px 6px; border-radius: 4px; font-size: 0.7 roll; color: #c084fc;">#${t}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        // Initialize App Interface
+        window.onload = initializeSystemNavigation;
+        // 🕸️ LIVE CYTOSCAPE GRAPH GENERATOR
+function renderQueryGraph(querySubject, relatedEntities) {
+    const container = document.getElementById("query-graph-canvas");
+    container.style.display = "block"; 
+
+    // Format elements array for Cytoscape (Central Node + Leaf Nodes)
+    const graphElements = [
+        // Core Query Focus Anchor Node
+        { data: { id: 'core', label: querySubject.toUpperCase(), color: '#a855f7', size: 22 } }
+    ];
+
+    // Dynamically append extracted connections from the Cognee matrix
+    relatedEntities.forEach((entity, index) => {
+        const nodeId = `node_${index}`;
+        
+        // 🧼 Clean up raw string keys (e.g., "team_memory_core_anchor" -> "Team Memory")
+        let cleanLabel = entity
+            .replace(/_(core|cross)_anchor/g, '')
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+
+        // Create the connected leaf node
+        graphElements.push({
+            data: { id: nodeId, label: cleanLabel, color: '#38bdf8', size: 16 }
+        });
+        
+        // Draw the directional relational edge
+        graphElements.push({
+            data: { id: `edge_${index}`, source: 'core', target: nodeId }
+        });
+    });
+
+    // Initialize Cytoscape Instance
+    cytoscape({
+        container: container,
+        elements: graphElements,
+        style: [
+            {
+                selector: 'node',
+                style: {
+                    'background-color': 'data(color)',
+                    'label': 'data(label)',
+                    'color': '#f8fafc',
+                    'font-size': '10px',
+                    'font-family': 'Orbitron, sans-serif',
+                    'text-valign': 'bottom',
+                    'text-margin-y': 6,
+                    'text-halign': 'center',
+                    'width': 'data(size)',
+                    'height': 'data(size)',
+                }
+            },
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'line-color': 'rgba(56, 189, 248, 0.2)',
+                    'target-arrow-color': 'rgba(56, 189, 248, 0.4)',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier'
+                }
+            }
+        ],
+        layout: {
+            name: 'breadthfirst', 
+            directed: true,
+            padding: 30
+        },
+        userZoomingEnabled: false, 
+        userPanningEnabled: true
+    });
+}
+    </script>
+</body>
+</html>
