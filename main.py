@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
 import os
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 
 # 🪐 IMPORT ACTUAL COGNEE GRAPH MODULES
 import cognee
@@ -81,16 +81,51 @@ QUERY_STOPWORDS = {
     "why",
 }
 
+MODULE_DATASET_KEYS = {
+    "startup_profile": "startup_profile",
+    "team_memory": "team_memory",
+    "meeting_memory": "meeting_memory",
+    "meeting_card": "meeting_memory",
+    "competitor_memory": "competitor_memory",
+    "competitor_grid": "competitor_memory",
+    "customer_feedback": "customer_feedback",
+    "feedback_hub": "customer_feedback",
+    "investor_memory": "investor_memory",
+    "investor_ledger": "investor_memory",
+    "product_roadmap": "product_roadmap",
+    "roadmap_timeline": "product_roadmap",
+    "marketing_memory": "marketing_memory",
+    "marketing_metrics": "marketing_memory",
+    "financial_memory": "financial_memory",
+    "financial_runway": "financial_memory",
+    "technical_memory": "technical_memory",
+    "tech_stack_docs": "technical_memory",
+    "global": "global",
+}
+
+ALL_MODULES = [
+    "startup_profile",
+    "team_memory",
+    "meeting_memory",
+    "competitor_memory",
+    "customer_feedback",
+    "investor_memory",
+    "product_roadmap",
+    "marketing_memory",
+    "financial_memory",
+    "technical_memory",
+]
+
 # 📡 LIVE API ENDPOINTS
 
 @app.post("/api/v2/remember")
-async def remember_context(payload: RememberRequest):
+async def remember_context(payload: Dict[str, Any]):
     """
     Ingests module parameters, passes them directly up to Cognee Cloud, 
     and returns a structured metadata packet to fuel the frontend timeline view.
     """
-    module = payload.module_type
-    content = payload.data_content
+    module = _normalize_module_key(str(payload.get("module_type", "global")))
+    content = _extract_remember_content(payload)
     
     try:
         # 🔥 LIVE COGNEE CLOUD HANDSHAKE
@@ -121,7 +156,7 @@ async def remember_context(payload: RememberRequest):
     }
     
     return {
-        "status": "success",
+        "status": "SUCCESS",
         "message": f"Successfully integrated cloud memory structures for {module}.",
         "metadata": metadata_payload
     }
@@ -130,25 +165,11 @@ async def remember_context(payload: RememberRequest):
 
 @app.post("/api/v2/recall")
 async def recall_context(payload: RecallRequest):
-    module = payload.module_type
+    module = _normalize_module_key(payload.module_type)
     query = payload.query.strip()
     
     if _has_empty_query_constraints(query):
         return "EMPTY_CONSTRAINTS_MISMATCH"
-
-    all_modules = [
-        "startup_profile", "team_memory", "meeting_card", "competitor_grid", 
-        "feedback_hub", "investor_ledger", "roadmap_timeline", 
-        "marketing_metrics", "financial_runway", "tech_stack_docs"
-    ]
-    
-    def strict_context_check(user_query, retrieved_text):
-        keywords = _extract_meaningful_query_tokens(user_query)
-        if not keywords:
-            return False
-
-        retrieved_text_normalized = str(retrieved_text).lower()
-        return any(keyword in retrieved_text_normalized for keyword in keywords)
 
     # 1. Check primary module
     primary_dataset = f"founder_os_{module}"
@@ -158,7 +179,7 @@ async def recall_context(payload: RecallRequest):
             
             if search_results and str(search_results).strip() not in ["[]", "None", "{}"]:
                 # 🔥 Strict check: Make sure it's an actual contextual match, not a forced low-score vector proximity
-                if strict_context_check(query, search_results):
+                if _has_structural_entity_overlap(query, search_results):
                     return {
                         "status": "FOUND",
                         "confidence": 0.94,
@@ -173,7 +194,7 @@ async def recall_context(payload: RecallRequest):
     matched_anchors = []
     
     try:
-        for m in all_modules:
+        for m in ALL_MODULES:
             if m == module and module != "global":
                 continue
             dataset_id = f"founder_os_{m}"
@@ -181,7 +202,7 @@ async def recall_context(payload: RecallRequest):
             
             if search_results and str(search_results).strip() not in ["[]", "None", "{}"]:
                 # 🔥 Enforce the context check on the cross-module fallback entries too
-                if strict_context_check(query, search_results):
+                if _has_structural_entity_overlap(query, search_results):
                     clean_name = m.replace("_", " ").title()
                     combined_results[clean_name] = search_results
                     matched_anchors.append(f"{m}_cross_anchor")
@@ -204,6 +225,60 @@ def _has_empty_query_constraints(query: str) -> bool:
         return True
 
     return not _extract_meaningful_query_tokens(normalized_query)
+
+def _normalize_module_key(module_type: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_]+", "_", module_type.strip().lower()).strip("_")
+    return MODULE_DATASET_KEYS.get(normalized, normalized or "global")
+
+def _extract_remember_content(payload: Dict[str, Any]) -> Dict[str, Any]:
+    content = payload.get("data_content")
+    if content is None:
+        content = payload.get("input_data")
+
+    if content is None:
+        content = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"module_type", "data_content", "input_data"}
+        }
+
+    if not isinstance(content, dict):
+        content = {"status_log": str(content)}
+
+    cleaned_content = {
+        str(key): value
+        for key, value in content.items()
+        if value not in (None, "", [], {})
+    }
+
+    if not cleaned_content:
+        return {"status_log": "Sparse input block accepted by FounderOS semantic guardrail."}
+
+    return cleaned_content
+
+def _has_structural_entity_overlap(query: str, retrieved_chunk: Any) -> bool:
+    query_tokens = set(_extract_meaningful_query_tokens(query))
+    if not query_tokens:
+        return False
+
+    chunk_tokens = _extract_chunk_tokens(retrieved_chunk)
+    return bool(query_tokens & chunk_tokens)
+
+def _extract_chunk_tokens(value: Any) -> Set[str]:
+    if isinstance(value, dict):
+        tokens: Set[str] = set()
+        for key, child_value in value.items():
+            tokens.update(_extract_meaningful_query_tokens(str(key)))
+            tokens.update(_extract_chunk_tokens(child_value))
+        return tokens
+
+    if isinstance(value, (list, tuple, set)):
+        tokens: Set[str] = set()
+        for item in value:
+            tokens.update(_extract_chunk_tokens(item))
+        return tokens
+
+    return set(_extract_meaningful_query_tokens(str(value)))
 
 def _extract_meaningful_query_tokens(query: str) -> List[str]:
     tokens = re.findall(r"\b[a-zA-Z0-9_]{2,}\b", query.lower())
